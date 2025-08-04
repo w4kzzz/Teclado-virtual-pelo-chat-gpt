@@ -1,0 +1,178 @@
+--[[
+Teclado Virtual Compacto com Pressionar/Soltar (LocalScript)
+- Teclado virtual compacto, arrastável, com sistema de pressionar e segurar.
+- Se você clicar e segurar uma tecla, ela permanece pressionada até soltar o mouse.
+- Usa VirtualInputManager para simular pressionar/soltar teclas no jogo.
+]]
+
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local KEY_WIDTH = 32
+local KEY_HEIGHT = 28
+local KEY_SPACING = 4
+local BASE_X = 10
+local BASE_Y = 10
+
+-- UI Creation
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VirtualKeyboardHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Hub Frame
+local hubFrame = Instance.new("Frame")
+hubFrame.Name = "HubFrame"
+hubFrame.Size = UDim2.new(0, 240, 0, 44)
+hubFrame.Position = UDim2.new(0, 60, 0, 60)
+hubFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+hubFrame.BorderSizePixel = 0
+hubFrame.Active = true
+hubFrame.Draggable = true
+hubFrame.Parent = screenGui
+
+-- Label "virtual keyboard"
+local label = Instance.new("TextLabel")
+label.Name = "VKLabel"
+label.Size = UDim2.new(0, 120, 1, 0)
+label.Position = UDim2.new(0, 0, 0, 0)
+label.BackgroundTransparency = 1
+label.Text = "virtual keyboard"
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.Font = Enum.Font.GothamBold
+label.TextSize = 16
+label.TextXAlignment = Enum.TextXAlignment.Left
+label.Parent = hubFrame
+
+-- Minimizar botão (quadrado)
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Name = "MinimizeBtn"
+minimizeBtn.Size = UDim2.new(0, 32, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -32, 0, 0)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = Color3.fromRGB(255,255,255)
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 22
+minimizeBtn.Parent = hubFrame
+
+-- Show/Hide Keyboard Button
+local toggleKeyboardBtn = Instance.new("TextButton")
+toggleKeyboardBtn.Name = "ToggleKeyboardBtn"
+toggleKeyboardBtn.Size = UDim2.new(0, 68, 1, 0)
+toggleKeyboardBtn.Position = UDim2.new(1, -100, 0, 0)
+toggleKeyboardBtn.BackgroundColor3 = Color3.fromRGB(60, 130, 255)
+toggleKeyboardBtn.Text = "Teclado"
+toggleKeyboardBtn.TextColor3 = Color3.fromRGB(255,255,255)
+toggleKeyboardBtn.Font = Enum.Font.Gotham
+toggleKeyboardBtn.TextSize = 15
+toggleKeyboardBtn.Parent = hubFrame
+
+-- Teclado Virtual Frame (movimentável)
+local keyboardFrame = Instance.new("Frame")
+keyboardFrame.Name = "KeyboardFrame"
+keyboardFrame.Size = UDim2.new(0, 520, 0, 180)
+keyboardFrame.Position = UDim2.new(0, 60, 0, 110)
+keyboardFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+keyboardFrame.BorderSizePixel = 0
+keyboardFrame.Active = true
+keyboardFrame.Draggable = true
+keyboardFrame.Visible = false
+keyboardFrame.Parent = screenGui
+
+local keyLayout = {
+    { {"Esc",Enum.KeyCode.Escape},{"F1",Enum.KeyCode.F1},{"F2",Enum.KeyCode.F2},{"F3",Enum.KeyCode.F3},{"F4",Enum.KeyCode.F4},{"F5",Enum.KeyCode.F5},{"F6",Enum.KeyCode.F6},{"F7",Enum.KeyCode.F7},{"F8",Enum.KeyCode.F8},{"F9",Enum.KeyCode.F9},{"F10",Enum.KeyCode.F10} },
+    { {"`",Enum.KeyCode.Backquote},{"1",Enum.KeyCode.One},{"2",Enum.KeyCode.Two},{"3",Enum.KeyCode.Three},{"4",Enum.KeyCode.Four},{"5",Enum.KeyCode.Five},{"6",Enum.KeyCode.Six},{"7",Enum.KeyCode.Seven},{"8",Enum.KeyCode.Eight},{"9",Enum.KeyCode.Nine},{"0",Enum.KeyCode.Zero},{"-",Enum.KeyCode.Minus},{"=",Enum.KeyCode.Equals},{"⌫",Enum.KeyCode.Backspace} },
+    { {"Tab",Enum.KeyCode.Tab},{"Q",Enum.KeyCode.Q},{"W",Enum.KeyCode.W},{"E",Enum.KeyCode.E},{"R",Enum.KeyCode.R},{"T",Enum.KeyCode.T},{"Y",Enum.KeyCode.Y},{"U",Enum.KeyCode.U},{"I",Enum.KeyCode.I},{"O",Enum.KeyCode.O},{"P",Enum.KeyCode.P},{"[",Enum.KeyCode.LeftBracket},{"]",Enum.KeyCode.RightBracket},{"\\",Enum.KeyCode.BackSlash} },
+    { {"Caps",Enum.KeyCode.CapsLock},{"A",Enum.KeyCode.A},{"S",Enum.KeyCode.S},{"D",Enum.KeyCode.D},{"F",Enum.KeyCode.F},{"G",Enum.KeyCode.G},{"H",Enum.KeyCode.H},{"J",Enum.KeyCode.J},{"K",Enum.KeyCode.K},{"L",Enum.KeyCode.L},{";",Enum.KeyCode.Semicolon},{"'",Enum.KeyCode.Quote},{"⏎",Enum.KeyCode.Return} },
+    { {"Shift",Enum.KeyCode.LeftShift},{"Z",Enum.KeyCode.Z},{"X",Enum.KeyCode.X},{"C",Enum.KeyCode.C},{"V",Enum.KeyCode.V},{"B",Enum.KeyCode.B},{"N",Enum.KeyCode.N},{"M",Enum.KeyCode.M},{",",Enum.KeyCode.Comma},{".",Enum.KeyCode.Period},{"/",Enum.KeyCode.Slash},{"Shift",Enum.KeyCode.RightShift} },
+    { {"Ctrl",Enum.KeyCode.LeftControl},{"Alt",Enum.KeyCode.LeftAlt},{"Space",Enum.KeyCode.Space},{"Alt",Enum.KeyCode.RightAlt},{"Ctrl",Enum.KeyCode.RightControl} }
+}
+
+-- Função para pressionar/soltar tecla
+local function setKeyState(keyCode, pressed)
+    if VirtualInputManager and keyCode then
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(pressed, keyCode, false, game)
+        end)
+    end
+end
+
+-- Criação dos botões das teclas com sistema de segurar
+local yOffset = BASE_Y
+for rowIdx, row in ipairs(keyLayout) do
+    local xOffset = BASE_X
+    for colIdx, key in ipairs(row) do
+        local keyText, keyCode = key[1], key[2]
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, KEY_WIDTH, 0, KEY_HEIGHT)
+        btn.Position = UDim2.new(0, xOffset, 0, yOffset)
+        btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        btn.Text = keyText
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 13
+        btn.Parent = keyboardFrame
+
+        -- Larguras especiais
+        if keyText == "Tab" or keyText == "Caps" then
+            btn.Size = UDim2.new(0, KEY_WIDTH*1.4, 0, KEY_HEIGHT)
+        elseif keyText == "Shift" then
+            btn.Size = UDim2.new(0, KEY_WIDTH*1.6, 0, KEY_HEIGHT)
+        elseif keyText == "Space" then
+            btn.Size = UDim2.new(0, KEY_WIDTH*5, 0, KEY_HEIGHT)
+        elseif keyText == "⌫" or keyText == "⏎" then
+            btn.Size = UDim2.new(0, KEY_WIDTH*1.7, 0, KEY_HEIGHT)
+        end
+
+        -- Sistema de pressionar/soltar
+        btn.MouseButton1Down:Connect(function()
+            setKeyState(keyCode, true)
+        end)
+        btn.MouseButton1Up:Connect(function()
+            setKeyState(keyCode, false)
+        end)
+        -- Se mouse sair do botão com tecla pressionada, solta a tecla
+        btn.MouseLeave:Connect(function()
+            setKeyState(keyCode, false)
+        end)
+
+        xOffset = xOffset + btn.Size.X.Offset + KEY_SPACING
+    end
+    yOffset = yOffset + KEY_HEIGHT + KEY_SPACING
+end
+
+-- Mostrar/ocultar teclado
+toggleKeyboardBtn.MouseButton1Click:Connect(function()
+    keyboardFrame.Visible = not keyboardFrame.Visible
+end)
+
+-- Minimizar/maximizar hub
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        hubFrame.Size = UDim2.new(0, 50, 0, 44)
+        label.Visible = true
+        label.Size = UDim2.new(0, 50, 1, 0)
+        label.Text = "virtual keyboard"
+        toggleKeyboardBtn.Visible = false
+        minimizeBtn.Position = UDim2.new(1, -32, 0, 0)
+        keyboardFrame.Visible = false
+    else
+        hubFrame.Size = UDim2.new(0, 240, 0, 44)
+        label.Visible = true
+        label.Size = UDim2.new(0, 120, 1, 0)
+        label.Text = "virtual keyboard"
+        toggleKeyboardBtn.Visible = true
+        minimizeBtn.Position = UDim2.new(1, -32, 0, 0)
+    end
+end)
+
+hubFrame.Active = true
+hubFrame.Draggable = true
+keyboardFrame.Active = true
+keyboardFrame.Draggable = true

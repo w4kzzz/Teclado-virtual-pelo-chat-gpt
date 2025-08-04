@@ -1,1 +1,0 @@
-# Teclado-virtual-pelo-chat-gpt
